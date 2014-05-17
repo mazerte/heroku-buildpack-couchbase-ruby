@@ -20,7 +20,8 @@ class LanguagePack::Ruby < LanguagePack::Base
   JVM_VERSION          = "openjdk7-latest"
   DEFAULT_RUBY_VERSION = "ruby-2.0.0"
 
-  COUCHBASE_VENDOR_URL = "http://asquera-share.s3.amazonaws.com/heroku/libcouchbase-2.0.tgz"
+  # COUCHBASE_VENDOR_URL = "https://s3-eu-west-1.amazonaws.com/ogury-cdn/libcouchbase-2.3.1.tgz"
+  COUCHBASE_VENDOR_URL = "http://packages.couchbase.com/clients/c/libcouchbase-2.3.1.tar.gz"
 
   # detects if this is a valid Ruby app
   # @return [Boolean] true if it's a Ruby app
@@ -83,7 +84,8 @@ class LanguagePack::Ruby < LanguagePack::Base
     allow_git do
       # Install couchbase dependencies 
       install_libcouchbase
-      run("cp -R vendor/couchbase /app/vendor/couchbase")
+      run("mkdir -p /app/vendor")
+      run("cp -vR #{@build_path}/vendor/couchbase /app/vendor/couchbase")
 
       install_language_pack_gems
       build_bundler
@@ -95,15 +97,6 @@ class LanguagePack::Ruby < LanguagePack::Base
   end
 
 private
-
-  def install_libcouchbase
-    topic("Installing libcouchbase")
-    bin_dir = "vendor/couchbase"
-    FileUtils.mkdir_p bin_dir
-    Dir.chdir(bin_dir) do |dir|
-      run("curl #{COUCHBASE_VENDOR_URL} -s -o - | tar xzf -")
-    end
-  end
 
   # the base PATH environment variable to be used
   # @return [String] the resulting PATH
@@ -249,7 +242,7 @@ private
   # determines if a build ruby is required
   # @return [Boolean] true if a build ruby is required
   def build_ruby?
-    @build_ruby ||= !ruby_version_rbx? && !ruby_version_jruby? && !%w{ruby-1.9.3 ruby-2.0.0}.include?(ruby_version)
+    @build_ruby ||= !ruby_version_rbx? && !ruby_version_jruby? && !%w{ruby-1.9.3 ruby-2.0.0 ruby-2.1.1}.include?(ruby_version)
   end
 
   # install the vendored ruby
@@ -413,10 +406,14 @@ WARNING
 
   def install_libcouchbase
     topic("Installing libcouchbase")
-    bin_dir = "vendor/couchbase"
+    bin_dir = "vendor/couchbase_src"
     FileUtils.mkdir_p bin_dir
     Dir.chdir(bin_dir) do |dir|
       run("curl #{COUCHBASE_VENDOR_URL} -s -o - | tar xzf -")
+      Dir.chdir('libcouchbase-2.3.1') do |dir|
+        run("./configure --prefix=#{@build_path}/vendor/couchbase --disable-examples --disable-tests --disable-couchbasemock")
+        run('make install')
+      end
     end
   end
 
@@ -497,16 +494,17 @@ WARNING
         env_vars      += " BUNDLER_LIB_PATH=#{bundler_path}" if ruby_version && ruby_version.match(/^ruby-1\.8\.7/)
 
         # setup couchbase build configuration for bundler
-        run("#{env_vars} bundle config build.couchbase --with-libcouchbase-dir=/app/vendor/couchbase")
+        run("#{env_vars} #{bundle_bin} config build.couchbase --with-libcouchbase-dir=/app/vendor/couchbase")
         
         puts "Running: #{bundle_command}"
-        bundler_output << pipe("#{env_vars} #{bundle_command} --no-clean 2>&1")
+        bundler_output << pipe("#{env_vars} #{bundle_command} 2>&1")
 
       end
 
       if $?.success?
         log "bundle", :status => "success"
         puts "Cleaning up the bundler cache."
+        pipe "#{bundle_bin} config --delete dry_run"
         pipe "#{bundle_bin} clean 2> /dev/null"
         cache.store ".bundle"
         cache.store "vendor/bundle"
