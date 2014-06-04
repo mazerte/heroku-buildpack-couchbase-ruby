@@ -36,8 +36,8 @@ private
 
   # runs the tasks for the Rails 3.1 asset pipeline
   def run_assets_precompile_rake_task
+    topic("#{ENV["DATABASE_URL"]}")
     log("assets_precompile") do
-      puts ENV["DATABASE_URL"]
       setup_database_url_env
 
       if rake_task_defined?("assets:precompile")
