@@ -36,7 +36,6 @@ private
 
   # runs the tasks for the Rails 3.1 asset pipeline
   def run_assets_precompile_rake_task
-    topic("#{ENV["DATABASE_URL"]}")
     log("assets_precompile") do
       setup_database_url_env
 
@@ -48,6 +47,7 @@ private
           ENV["RAILS_GROUPS"] ||= "assets"
           ENV["RAILS_ENV"]    ||= "production"
 
+          topic("#{ENV["DATABASE_URL"]}")
           puts "Running: rake assets:precompile"
           require 'benchmark'
           time = Benchmark.realtime { pipe("env PATH=$PATH:bin bundle exec rake assets:precompile 2>&1") }
