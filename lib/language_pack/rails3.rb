@@ -37,6 +37,7 @@ private
   # runs the tasks for the Rails 3.1 asset pipeline
   def run_assets_precompile_rake_task
     log("assets_precompile") do
+      puts ENV["DATABASE_URL"]
       setup_database_url_env
 
       if rake_task_defined?("assets:precompile")
@@ -68,7 +69,6 @@ private
 
   # setup the database url as an environment variable
   def setup_database_url_env
-    puts ENV["DATABASE_URL"]
     ENV["DATABASE_URL"] ||= begin
       # need to use a dummy DATABASE_URL here, so rails can load the environment
       scheme =
