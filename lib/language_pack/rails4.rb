@@ -77,6 +77,7 @@ WARNING
 
           @cache.load public_assets_folder
 
+          topic("#{ENV["DATABASE_URL"]}")
           puts "Running: rake assets:precompile"
           require 'benchmark'
           time = Benchmark.realtime { pipe("env PATH=$PATH:bin bundle exec rake assets:precompile 2>&1 > /dev/null") }
